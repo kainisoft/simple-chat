@@ -17,7 +17,7 @@ A high-performance full-stack AI chatbot application optimized for AMD Ryzen 9 8
 ## Project Structure
 
 ```
-/home/kainisoft/www/ai/simple-chat/
+./
 ├── .gitignore                  # Comprehensive gitignore for all technologies
 ├── README.md                   # This file
 ├── docker-compose.yml          # Production environment (GPU-optimized)

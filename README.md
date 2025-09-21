@@ -2,6 +2,8 @@
 
 A high-performance full-stack AI chatbot application optimized for AMD Ryzen 9 8945HX + NVIDIA RTX 5070. Features a FastAPI backend powered by Microsoft DialoGPT with GPU acceleration, React frontend, and comprehensive Docker deployment.
 
+<img width="1149" height="830" alt="Screenshot_20250921_140432" src="https://github.com/user-attachments/assets/80ad158e-5ae7-47cc-a21b-8bc6b2d6dc92" />
+
 ## Technology Stack
 
 - **Backend**: Python 3.10, FastAPI, PyTorch, Transformers (Hugging Face), SQLAlchemy

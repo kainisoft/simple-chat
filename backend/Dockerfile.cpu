@@ -1,0 +1,65 @@
+# CPU-only Dockerfile optimized for AMD Ryzen 9 8945HX (32 cores)
+FROM python:3.10-slim
+
+# Set environment variables for optimal CPU performance
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# CPU optimizations for AMD Ryzen 9 8945HX
+ENV OMP_NUM_THREADS=32
+ENV TORCH_NUM_THREADS=32
+ENV MKL_NUM_THREADS=32
+ENV NUMEXPR_NUM_THREADS=32
+ENV OPENBLAS_NUM_THREADS=32
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash --uid 1000 chatbot
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and modify for CPU-only
+COPY requirements.txt .
+
+# Install CPU-only PyTorch and dependencies (compatible versions)
+RUN pip install torch==2.1.2+cpu torchvision==0.16.2+cpu torchaudio==2.1.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install other requirements with compatible versions
+RUN pip install fastapi==0.104.1 uvicorn[standard]==0.24.0 \
+    transformers==4.35.2 accelerate==0.24.1 optimum==1.14.1 \
+    tokenizers==0.14.1 safetensors==0.4.0 \
+    python-multipart==0.0.6 prometheus-client==0.19.0 \
+    structlog==23.2.0 pytest==7.4.3 httpx==0.25.2 \
+    psutil==5.9.6 GPUtil==1.4.0 slowapi==0.1.9 python-dotenv==1.0.0 \
+    orjson==3.9.10 einops==0.7.0 scipy==1.11.4 \
+    numpy==1.24.4 pydantic==2.5.0 pydantic-settings==2.1.0
+
+# Copy application code
+COPY app/ ./app/
+COPY .env.example .env
+
+# Create necessary directories
+RUN mkdir -p models logs && \
+    chown -R chatbot:chatbot /app
+
+# Switch to non-root user
+USER chatbot
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

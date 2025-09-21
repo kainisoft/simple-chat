@@ -1,0 +1,131 @@
+# Development Docker Compose with hot reload and debugging
+version: '3.8'
+
+services:
+  # Database Service
+  chatbot-db:
+    image: mariadb:10.11
+    container_name: chatbot-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=chatbot_root_password
+      - MYSQL_DATABASE=chatbot_db
+      - MYSQL_USER=chatbot_user
+      - MYSQL_PASSWORD=chatbot_password
+      - MYSQL_CHARACTER_SET_SERVER=utf8mb4
+      - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
+    volumes:
+      - chatbot_db_data:/var/lib/mysql
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  chatbot-api-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: chatbot-api:dev
+    container_name: chatbot-api-dev
+
+    # GPU Configuration for Docker CE
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # Development environment with GPU support
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_RELOAD=true
+      - CHATBOT_MODEL_NAME=microsoft/DialoGPT-medium
+      - USE_GPU=false
+      - LOG_LEVEL=DEBUG
+      - TORCH_THREADS=8  # Reduced for development
+      - OMP_NUM_THREADS=8
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+      - TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
+      - FORCE_CUDA=1
+      - DATABASE_URL=mysql+aiomysql://chatbot_user:chatbot_password@chatbot-db:3306/chatbot_db
+      - DATABASE_HOST=chatbot-db
+      - DATABASE_PORT=3306
+      - DATABASE_NAME=chatbot_db
+      - DATABASE_USER=chatbot_user
+      - DATABASE_PASSWORD=chatbot_password
+    
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Debug port
+    
+    # Mount source code for hot reload
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/models:/app/models
+      - ./backend/logs:/app/logs
+    
+    # Override command for development
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    
+    # Resource limits (reduced for development)
+    mem_limit: 4g
+    cpus: '8.0'
+    
+    networks:
+      - chatbot-network
+
+    depends_on:
+      chatbot-db:
+        condition: service_healthy
+
+  # Frontend service for development
+  chatbot-frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    image: chatbot-frontend:dev
+    container_name: chatbot-frontend-dev
+
+    # Development environment
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true  # Enable hot reload in Docker
+      - WATCHPACK_POLLING=true
+
+    ports:
+      - "3000:3000"
+
+    # Mount source code for hot reload
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json
+      - /app/node_modules  # Anonymous volume to preserve node_modules
+
+    depends_on:
+      - chatbot-api-dev
+
+    networks:
+      - chatbot-network
+
+networks:
+  chatbot-network:
+    driver: bridge
+
+volumes:
+  chatbot_db_data:
+    driver: local

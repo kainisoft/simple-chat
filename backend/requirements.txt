@@ -1,0 +1,59 @@
+# Core API Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# AI/ML Libraries - Optimized for NVIDIA RTX 5070 + AMD Ryzen 9 8945HX
+# PyTorch will be installed separately in Dockerfile with correct CUDA version
+transformers==4.35.2
+accelerate==0.24.1
+optimum==1.14.1
+
+# Performance Optimization
+# torch-audio is not needed, torchaudio is installed separately
+tokenizers==0.14.1
+safetensors==0.4.0
+
+# API Enhancement
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Monitoring and Logging
+prometheus-client==0.19.0
+structlog==23.2.0
+
+# Development and Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+
+# System Optimization
+psutil==5.9.6
+GPUtil==1.4.0
+
+# Rate Limiting
+slowapi==0.1.9
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Database Dependencies
+sqlalchemy==2.0.23
+alembic==1.12.1
+aiomysql==0.2.0
+
+# Data Validation and Serialization
+orjson==3.9.10
+
+# CUDA Memory Management (for RTX 5070)
+nvidia-ml-py==12.535.133
+
+# Model Quantization for Performance
+bitsandbytes==0.41.3
+
+# Additional Performance Libraries
+einops==0.7.0
+scipy==1.11.4
+numpy==1.24.4

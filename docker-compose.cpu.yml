@@ -1,0 +1,80 @@
+# CPU-only Docker Compose for testing without GPU
+version: '3.8'
+
+services:
+  chatbot-api-cpu:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.cpu  # We'll create this
+    image: chatbot-api:cpu
+    container_name: chatbot-api-cpu
+    
+    # CPU-optimized environment for AMD Ryzen 9 8945HX
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - CHATBOT_MODEL_NAME=microsoft/DialoGPT-medium
+      - USE_GPU=false
+      - BATCH_SIZE=2  # Reduced for CPU
+      - MAX_CONCURRENT_REQUESTS=8
+      - TORCH_THREADS=32  # Use all cores for CPU inference
+      - OMP_NUM_THREADS=32
+      - LOG_LEVEL=INFO
+    
+    ports:
+      - "8000:8000"
+    
+    volumes:
+      - ./backend/models:/app/models
+      - ./backend/logs:/app/logs
+    
+    # Maximize CPU resources for Ryzen 9 8945HX
+    mem_limit: 16g
+    cpus: '32.0'
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Longer startup for CPU inference
+    
+    restart: unless-stopped
+    
+    networks:
+      - chatbot-network
+
+  # Frontend service (CPU-only environment)
+  chatbot-frontend-cpu:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: chatbot-frontend:cpu
+    container_name: chatbot-frontend-cpu
+
+    # Environment variables
+    environment:
+      - REACT_APP_API_URL=http://chatbot-api-cpu:8000
+      - NODE_ENV=production
+
+    ports:
+      - "3000:80"
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    restart: unless-stopped
+
+    depends_on:
+      - chatbot-api-cpu
+
+    networks:
+      - chatbot-network
+
+networks:
+  chatbot-network:
+    driver: bridge
